@@ -12,7 +12,7 @@ members = [
 
 [[bin]]
 name = "vfx"
-path = "src/7.rs"
+path = "src/8.rs"
 
 [[bin]]
 name = "tap_tempo"
