@@ -9,3 +9,11 @@ nannou = "0.19.0"
 [workspace]
 members = [
 ]
+
+[[bin]]
+name = "vfx"
+path = "src/7.rs"
+
+[[bin]]
+name = "tap_tempo"
+path = "src/tap_tempo__ui_spring.rs"

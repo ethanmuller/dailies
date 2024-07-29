@@ -154,7 +154,7 @@ fn model(app: &App) -> Model {
 
     Model {
         agents,
-        noise_scale: 100.0,
+        noise_scale: 40.0,
         noise_strength: 3.0,
         noise_z_velocity: 0.001,
         overlay_alpha: 0.8,
