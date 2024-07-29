@@ -2,9 +2,6 @@ use std::time::Instant;
 
 use nannou::prelude::*;
 
-pub mod spring;
-use spring::Spring;
-
 const WAIT_CUTOFF: f64 = 2.0;
 
 fn main() {
@@ -24,7 +21,6 @@ struct Model {
     taps: Vec<Instant>,
     seconds_since_last_tap: Option<f64>,
     bpm: Option<f64>,
-    spring: Spring,
 }
 
 impl Model {
@@ -34,7 +30,6 @@ impl Model {
             taps: Vec::new(),
             seconds_since_last_tap: None,
             bpm: None,
-            spring: Spring::new(9.0, 0.3, 0.99, 0.0, 0.0),
         }
     }
 
@@ -65,7 +60,6 @@ impl Model {
     }
 
     fn update(&mut self) {
-        self.spring.update(0.05);
         if let Some(last_tap) = self.taps.last() {
             let current_time = Instant::now();
             self.seconds_since_last_tap = Some(current_time.duration_since(*last_tap).as_secs_f64());
@@ -115,10 +109,7 @@ impl Model {
                 self.state = TapTempoState::RecordingTaps;
                 self.set_additional_time();
             },
-            TapTempoState::RecordingTaps => {
-                self.spring.value = 0.5;
-                self.set_additional_time()
-            },
+            TapTempoState::RecordingTaps => self.set_additional_time(),
             TapTempoState::TempoSet => self.set_initial_time(),
         }
     }
@@ -164,8 +155,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
             draw.ellipse().rgba(1.0, 1.0, 1.0, 0.3).radius(diminished_radius).x_y(x, y);
         },
         TapTempoState::RecordingTaps => {
-            let scale = 1.0 + model.spring.value;
-            draw.ellipse().rgb(1.0, 0.0, 0.0).radius(radius*scale).x_y(x, y);
+            draw.ellipse().rgb(1.0, 0.0, 0.0).radius(radius).x_y(x, y);
         },
         _ => {},
     }
