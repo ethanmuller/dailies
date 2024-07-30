@@ -12,7 +12,7 @@ members = [
 
 [[bin]]
 name = "vfx"
-path = "src/8.rs"
+path = "src/7.rs"
 
 [[bin]]
 name = "sync"

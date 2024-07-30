@@ -8,6 +8,11 @@ fn main() {
     nannou::app(model).update(update).run();
 }
 
+enum DrawMode {
+    NoTrails,
+    Trails,
+}
+
 struct Agent {
     vector: Vec2,
     vector_old: Vec2,
@@ -33,12 +38,12 @@ impl Agent {
         }
     }
 
-    fn update(&mut self, speed: f32, noise_z_velocity: f64) {
+    fn update(&mut self, oscillator: f32, noise_z_velocity: f64) {
         self.noise_z += noise_z_velocity;
         self.vector_old = self.vector;
 
-        self.vector.x += self.angle.cos() * self.step_size * speed;
-        self.vector.y += self.angle.sin() * self.step_size * speed;
+        self.vector.x += self.angle.cos() * self.step_size * oscillator;
+        self.vector.y += self.angle.sin() * self.step_size * oscillator;
 
         if self.vector.x < self.win_rect.left() - 10.0 {
             self.vector.x = self.win_rect.right() + 10.0;
@@ -58,7 +63,7 @@ impl Agent {
         }
     }
 
-    fn update1(&mut self, noise: Perlin, z: f64, noise_scale: f64, noise_strength: f64) {
+    fn apply_noise(&mut self, noise: Perlin, z: f64, noise_scale: f64, noise_strength: f64) {
         let n = noise.get([
             self.vector.x as f64 / noise_scale,
             self.vector.y as f64 / noise_scale,
@@ -67,17 +72,7 @@ impl Agent {
         self.angle = n as f32;
     }
 
-    fn update2(&mut self, noise: Perlin, noise_scale: f64, noise_strength: f64) {
-        let n = noise.get([
-            self.vector.x as f64 / noise_scale,
-            self.vector.y as f64 / noise_scale,
-            self.noise_z,
-        ]) * 24.0;
-        self.angle = n as f32;
-        self.angle = (self.angle - self.angle.floor()) * noise_strength as f32;
-    }
-
-    fn display(&self, model: &Model, draw: &Draw, stroke_weight: f32, agent_alpha: f32) {
+    fn display_trails(&self, model: &Model, draw: &Draw, agent_alpha: f32) {
         let elapsed = model.start_time.elapsed();
         let elapsed_secs = elapsed.as_secs_f32();
         let r = (elapsed_secs * 0.06 * std::f32::consts::PI + 3.0)
@@ -92,7 +87,25 @@ impl Agent {
             .start(self.vector_old)
             .end(self.vector)
             .rgba(r, g, b, agent_alpha)
-            .stroke_weight(stroke_weight * self.step_size);
+            .stroke_weight(0.5 * self.step_size);
+    }
+
+    fn draw(&self, model: &Model, draw: &Draw, agent_alpha: f32) {
+        let elapsed = model.start_time.elapsed();
+        let elapsed_secs = elapsed.as_secs_f32();
+        let r = (elapsed_secs * 0.06 * std::f32::consts::PI + 3.0)
+            .sin()
+            .abs();
+        let g = (elapsed_secs * 0.01 * std::f32::consts::PI + 6.0)
+            .sin()
+            .abs();
+        let b = (elapsed_secs * 0.1 * std::f32::consts::PI).sin().abs();
+
+        draw.line()
+            .start(self.vector_old)
+            .end(self.vector)
+            .rgba(r, g, b, agent_alpha)
+            .stroke_weight(0.5 * self.step_size);
     }
 }
 
@@ -102,8 +115,7 @@ pub struct Model {
     noise_strength: f64,
     noise_z_velocity: f64,
     agent_alpha: f32,
-    stroke_width: f32,
-    draw_mode: u8,
+    draw_mode: DrawMode,
     noise_seed: u32,
     oscillator_freq_mult: f32,
     oscillator_amp: f32,
@@ -117,7 +129,7 @@ pub struct Model {
 
 fn model(app: &App) -> Model {
     app.new_window()
-        .size(800, 800)
+        .size(1920, 1080)
         .view(view)
         .title("🔴")
         .mouse_pressed(mouse_pressed)
@@ -137,13 +149,12 @@ fn model(app: &App) -> Model {
     Model {
         agents,
         noise_scale: 30.0,
-        noise_strength: 2.0,
+        noise_strength: 1.0,
         noise_z_velocity: 0.001,
         agent_alpha: 0.5,
-        stroke_width: 0.5,
-        oscillator_amp: 2.0,
+        oscillator_amp: 2.3,
         oscillator_freq_mult: 0.1,
-        draw_mode: 1,
+        draw_mode: DrawMode::Trails,
         noise_seed: 12,
         oscillator,
         oscillator_old: oscillator,
@@ -184,11 +195,7 @@ fn update(app: &App, model: &mut Model, frame_update: Update) {
     }
 
     for agent in &mut model.agents {
-        match model.draw_mode {
-            1 => agent.update1(noise, z, model.noise_scale, model.noise_strength),
-            2 => agent.update2(noise, model.noise_scale, model.noise_strength),
-            _ => (),
-        }
+        agent.apply_noise(noise, z, model.noise_scale, model.noise_strength);
         agent.update(model.oscillator, model.noise_z_velocity);
     }
 }
@@ -209,10 +216,20 @@ fn view(app: &App, model: &Model, frame: Frame) {
         * 0.05;
     let b = (elapsed_secs * 0.05 * std::f32::consts::PI).sin().abs() * 0.3;
 
-    draw.background().rgba(r, g, b, 0.3);
+    let alpha = match model.draw_mode {
+        DrawMode::NoTrails => 1.0,
+        DrawMode::Trails => model.oscillator.abs() * 0.3,
+    };
+
+    draw.rect()
+        .wh(app.window_rect().wh())
+        .rgba(r, g, b, alpha);
 
     model.agents.iter().for_each(|agent| {
-        agent.display(model, &draw, model.stroke_width, model.agent_alpha);
+        match model.draw_mode {
+            DrawMode::NoTrails => agent.draw(model, &draw, model.agent_alpha),
+            DrawMode::Trails => agent.display_trails(model, &draw, model.agent_alpha),
+        }
     });
 
     // Write the result of our drawing to the window's frame.
@@ -246,6 +263,8 @@ pub fn mouse_pressed(_app: &App, model: &mut Model, mouse_button: MouseButton) {
 
 pub fn key_pressed(app: &App, model: &mut Model, key: Key) {
     match key {
+        Key::Key1 => model.draw_mode = DrawMode::Trails,
+        Key::Key2 => model.draw_mode = DrawMode::NoTrails,
         Key::Space => tap(model),
         Key::Back => model.metro.clear(),
         Key::Delete => model.metro.clear(),

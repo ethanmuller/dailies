@@ -155,6 +155,10 @@ pub fn view(app: &App, model: &Model, frame: Frame) {
         TapTempoState::RecordingTaps => {
             let scale = 1.0 + model.spring.value;
             draw.ellipse()
+                .rgb(1.0, 1.0, 1.0)
+                .radius(radius * scale * 1.5)
+                .x_y(x, y);
+            draw.ellipse()
                 .rgb(1.0, 0.0, 0.0)
                 .radius(radius * scale)
                 .x_y(x, y);
