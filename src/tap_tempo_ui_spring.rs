@@ -109,7 +109,7 @@ impl Model {
         println!("tap");
     }
 
-    pub fn tap(&mut self) {
+    fn tap(&mut self) {
         match self.state {
             TapTempoState::NoTempoSet => self.set_initial_time(),
             TapTempoState::InitialTap => {
@@ -124,7 +124,7 @@ impl Model {
         }
     }
 
-    pub fn clear(&mut self) {
+    fn clear(&mut self) {
         self.state = TapTempoState::NoTempoSet;
         println!("{:?}", self.state);
     }
@@ -152,6 +152,7 @@ pub fn update(_app: &App, model: &mut Model, _update: Update) {
 
 pub fn view(app: &App, model: &Model, frame: Frame) {
     let draw = app.draw();
+    draw.background().rgb(0.8, 0.8, 0.8);
     let boundary = app.window_rect();
     let x = boundary.left() + 30.0;
     let y = boundary.top() - 30.0;

@@ -15,5 +15,5 @@ name = "vfx"
 path = "src/8.rs"
 
 [[bin]]
-name = "tap_tempo"
-path = "src/tap_tempo__ui_spring.rs"
+name = "sync"
+path = "src/sync.rs"

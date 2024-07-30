@@ -32,10 +32,6 @@ impl Spring {
         (force - self.damping * self.velocity) / self.mass
     }
 
-    pub fn apply_force(&mut self, force: f32) {
-        self.velocity += force;
-    }
-
     // Method to update the spring system over a small time step
     pub fn update(&mut self, dt: f32) {
         let acceleration = self.calculate_acceleration();
