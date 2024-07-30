@@ -137,9 +137,9 @@ fn model(app: &App) -> Model {
     Model {
         agents,
         noise_scale: 30.0,
-        noise_strength: 1.0,
+        noise_strength: 2.0,
         noise_z_velocity: 0.001,
-        agent_alpha: 1.0,
+        agent_alpha: 0.5,
         stroke_width: 0.5,
         oscillator_amp: 2.0,
         oscillator_freq_mult: 0.1,
@@ -166,8 +166,10 @@ fn update(app: &App, model: &mut Model, frame_update: Update) {
     model.oscillator_above_0_old = model.oscillator_above_0;
 
     if let Some(bpm) = model.metro.bpm {
-        let frequency = bpm as f32 / 60.0 / 4.0;
+        let frequency = bpm as f32 / 60.0;
         model.oscillator_freq_mult = frequency;
+    } else {
+        model.oscillator_freq_mult = 0.1;
     }
 
     model.oscillator = pow(
@@ -207,7 +209,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
         * 0.05;
     let b = (elapsed_secs * 0.05 * std::f32::consts::PI).sin().abs() * 0.3;
 
-    draw.background().rgba(r, g, b, 1.0);
+    draw.background().rgba(r, g, b, 0.3);
 
     model.agents.iter().for_each(|agent| {
         agent.display(model, &draw, model.stroke_width, model.agent_alpha);
@@ -231,8 +233,15 @@ fn key_released(app: &App, _model: &mut Model, key: Key) {
 }
 
 fn tap(model: &mut Model) {
-    model.noise_seed = (random_f32() * 10000.0).floor() as u32;
     model.metro.tap()
+}
+
+pub fn mouse_pressed(_app: &App, model: &mut Model, mouse_button: MouseButton) {
+    match mouse_button {
+        MouseButton::Left => tap(model),
+        MouseButton::Right => model.metro.clear(),
+        _ => {}
+    }
 }
 
 pub fn key_pressed(app: &App, model: &mut Model, key: Key) {
@@ -241,24 +250,26 @@ pub fn key_pressed(app: &App, model: &mut Model, key: Key) {
         Key::Back => model.metro.clear(),
         Key::Delete => model.metro.clear(),
         Key::Q => app.quit(),
-        Key::Z => {
+        Key::J => {
+            if let Some(bpm) = model.metro.bpm {
+                model.metro.bpm = Some(bpm / 4.0);
+            }
+        },
+        Key::K => {
             if let Some(bpm) = model.metro.bpm {
                 model.metro.bpm = Some(bpm / 2.0);
             }
-        }
-        Key::X => {
+        },
+        Key::L => {
             if let Some(bpm) = model.metro.bpm {
                 model.metro.bpm = Some(bpm * 2.0);
             }
-        }
-        _ => {}
-    }
-}
-
-pub fn mouse_pressed(_app: &App, model: &mut Model, mouse_button: MouseButton) {
-    match mouse_button {
-        MouseButton::Left => tap(model),
-        MouseButton::Right => model.metro.clear(),
+        },
+        Key::Semicolon => {
+            if let Some(bpm) = model.metro.bpm {
+                model.metro.bpm = Some(bpm * 4.0);
+            }
+        },
         _ => {}
     }
 }

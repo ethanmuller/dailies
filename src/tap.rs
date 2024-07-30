@@ -17,8 +17,8 @@ pub enum TapTempoState {
 
 pub struct Model {
     state: TapTempoState,
-    taps: Vec<Instant>,
-    seconds_since_last_tap: Option<f64>,
+    pub taps: Vec<Instant>,
+    pub seconds_since_last_tap: Option<f64>,
     pub bpm: Option<f64>,
     spring: Spring,
 }
