@@ -19,7 +19,7 @@ pub struct Model {
     state: TapTempoState,
     pub taps: Vec<Instant>,
     pub seconds_since_last_tap: Option<f64>,
-    pub bpm: Option<f64>,
+    pub bpm: f64,
     spring: Spring,
 }
 
@@ -29,7 +29,7 @@ impl Model {
             state: TapTempoState::NoTempoSet,
             taps: Vec::new(),
             seconds_since_last_tap: None,
-            bpm: None,
+            bpm: 1.0,
             spring: Spring::new(9.0, 0.3, 0.99, 0.0, 0.0),
         }
     }
@@ -56,7 +56,7 @@ impl Model {
 
     fn set_bpm(&mut self, bpm: f64) {
         self.state = TapTempoState::TempoSet;
-        self.bpm = Some(bpm);
+        self.bpm = bpm;
         println!("bpm: {}", bpm);
     }
 
@@ -142,11 +142,18 @@ pub fn view(app: &App, model: &Model, frame: Frame) {
     let y = boundary.top() - 30.0;
     let radius = 6.0;
 
+    let size = radius*2.0*3.0;
+
     match model.state {
         TapTempoState::InitialTap => {
             let time_left_normalzied =
                 ((WAIT_CUTOFF) - model.seconds_since_last_tap.unwrap_or(0.0)) / WAIT_CUTOFF;
             let diminished_radius = radius * time_left_normalzied as f32;
+            draw.quad()
+                .rgba(0.0, 0.0, 0.0, 1.0)
+                .x_y(x, y)
+                .width(size)
+                .height(size);
             draw.ellipse()
                 .rgba(1.0, 1.0, 1.0, 0.3)
                 .radius(diminished_radius)
@@ -154,10 +161,11 @@ pub fn view(app: &App, model: &Model, frame: Frame) {
         }
         TapTempoState::RecordingTaps => {
             let scale = 1.0 + model.spring.value;
-            draw.ellipse()
-                .rgb(1.0, 1.0, 1.0)
-                .radius(radius * scale * 1.5)
-                .x_y(x, y);
+            draw.quad()
+                .rgba(0.0, 0.0, 0.0, 1.0)
+                .x_y(x, y)
+                .width(size)
+                .height(size);
             draw.ellipse()
                 .rgb(1.0, 0.0, 0.0)
                 .radius(radius * scale)
@@ -212,7 +220,7 @@ mod tests {
         model.update();
 
         let actual_bpm = model.bpm;
-        let diff = (expected_bpm - actual_bpm.unwrap()).abs();
+        let diff = (expected_bpm - actual_bpm).abs();
         assert!(diff < 1.0);
     }
 
