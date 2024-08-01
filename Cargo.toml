@@ -2,7 +2,7 @@
 name = "dailies"
 version = "0.1.0"
 edition = "2021"
-default-run = "main"
+default-run = "9"
 
 [dependencies]
 nannou = "0.19.0"
@@ -18,3 +18,8 @@ path = "src/main.rs"
 [[bin]]
 name = "vfx"
 path = "src/7.rs"
+
+[[bin]]
+name = "9"
+path = "src/9.rs"
+

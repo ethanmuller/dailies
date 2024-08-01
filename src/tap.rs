@@ -55,7 +55,6 @@ impl Model {
     }
 
     fn set_bpm(&mut self, bpm: f64) {
-        self.state = TapTempoState::TempoSet;
         self.bpm = bpm;
         println!("bpm: {}", bpm);
     }
@@ -115,7 +114,11 @@ impl Model {
             }
             TapTempoState::RecordingTaps => {
                 self.spring.value = 0.5;
-                self.set_additional_time()
+                self.set_additional_time();
+
+                if let Some(bpm) = self.calculate_bpm() {
+                    self.set_bpm(bpm);
+                }
             }
             TapTempoState::TempoSet => self.set_initial_time(),
         }

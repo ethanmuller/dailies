@@ -99,8 +99,8 @@ impl Agent {
         self.noise_z += noise_z_velocity;
         self.vector_old = self.vector;
 
-        self.vector.x += self.angle.cos() * self.step_size * oscillator;
-        self.vector.y += self.angle.sin() * self.step_size * oscillator;
+        self.vector.x += self.angle.sin() * self.step_size * oscillator;
+        self.vector.y += self.angle.cos() * self.step_size * oscillator;
 
         if self.vector.x < self.win_rect.left() - 10.0 {
             self.vector.x = self.win_rect.right() + 10.0;
@@ -166,7 +166,11 @@ impl Agent {
 
 fn update(app: &App, model: &mut Model, frame_update: Update) {
     let noise = Perlin::new().set_seed(model.noise_seed);
-    let elapsed = model.start_time.elapsed();
+    let elapsed = if model.metro.taps.len() > 0 {
+        model.metro.taps[model.metro.taps.len()-1].elapsed()
+    } else {
+        model.start_time.elapsed()
+    };
     let elapsed_secs = elapsed.as_secs_f32();
     let z = elapsed.as_secs_f64() * 0.5;
 
