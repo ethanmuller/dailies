@@ -6,6 +6,7 @@ default-run = "9"
 
 [dependencies]
 nannou = "0.19.0"
+gilrs = "0.8"
 
 [workspace]
 members = [
@@ -22,4 +23,16 @@ path = "src/7.rs"
 [[bin]]
 name = "9"
 path = "src/9.rs"
+
+[[bin]]
+name = "controller"
+path = "src/controller.rs"
+
+[[bin]]
+name = "controller_flow"
+path = "src/10.rs"
+
+[[bin]]
+name = "min"
+path = "src/min.rs"
 
