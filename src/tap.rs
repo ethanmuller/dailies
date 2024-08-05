@@ -9,32 +9,31 @@ const WAIT_CUTOFF: f64 = 2.0;
 
 #[derive(Debug, PartialEq)]
 pub enum TapTempoState {
-    NoTempoSet,
+    Inactive,
     InitialTap,
     RecordingTaps,
-    TempoSet,
 }
 
 pub struct Model {
     state: TapTempoState,
     pub taps: Vec<Instant>,
     pub seconds_since_last_tap: Option<f64>,
-    pub bpm: f64,
+    pub bpm: Option<f64>,
     spring: Spring,
 }
 
 impl Model {
     pub fn default() -> Model {
         Model {
-            state: TapTempoState::NoTempoSet,
+            state: TapTempoState::Inactive,
             taps: Vec::new(),
             seconds_since_last_tap: None,
-            bpm: 1.0,
+            bpm: None,
             spring: Spring::new(9.0, 0.3, 0.99, 0.0, 0.0),
         }
     }
 
-    fn calculate_bpm(&mut self) -> Option<f64> {
+    fn calculate_average_interval(&self) -> Option<f64> {
         if self.taps.len() < 2 {
             return None;
         }
@@ -46,16 +45,24 @@ impl Model {
         }
 
         let average_interval = intervals.iter().sum::<f64>() / intervals.len() as f64;
-        Some(60.0 / average_interval)
+        Some(average_interval)
+    }
+
+    fn calculate_bpm(&self) -> Option<f64> {
+        let average_interval = self.calculate_average_interval();
+        match average_interval {
+            Some(i) => Some(60.0 / i),
+            None => None,
+        }
     }
 
     fn timeout(&mut self) {
-        self.state = TapTempoState::NoTempoSet;
+        self.state = TapTempoState::Inactive;
         println!("tap timeout");
     }
 
     fn set_bpm(&mut self, bpm: f64) {
-        self.bpm = bpm;
+        self.bpm = Some(bpm);
         println!("bpm: {}", bpm);
     }
 
@@ -66,28 +73,14 @@ impl Model {
             self.seconds_since_last_tap =
                 Some(current_time.duration_since(*last_tap).as_secs_f64());
 
-            if self.taps.len() >= 2 {
-                let mut intervals = Vec::new();
-                for i in 1..self.taps.len() {
-                    let duration = self.taps[i].duration_since(self.taps[i - 1]);
-                    intervals.push(duration.as_secs_f64());
-                }
-                let average_interval = intervals.iter().sum::<f64>() / intervals.len() as f64;
+            let average_interval = self.calculate_average_interval();
 
-                if self.seconds_since_last_tap >= Some(average_interval * 2.0) {
-                    if let Some(bpm) = self.calculate_bpm() {
-                        self.set_bpm(bpm);
-                        return;
-                    } else {
-                        self.timeout();
-                        return;
-                    }
-                }
-            } else {
-                if self.seconds_since_last_tap >= Some(WAIT_CUTOFF) {
+            if let Some(i) = average_interval {
+                if self.seconds_since_last_tap >= Some(i*2.0) {
                     self.timeout();
-                    return;
                 }
+            } else if self.seconds_since_last_tap >= WAIT_CUTOFF.into() {
+                self.timeout();
             }
         }
     }
@@ -106,7 +99,7 @@ impl Model {
 
     pub fn tap(&mut self) {
         match self.state {
-            TapTempoState::NoTempoSet => self.set_initial_time(),
+            TapTempoState::Inactive => self.set_initial_time(),
             TapTempoState::InitialTap => {
                 self.state = TapTempoState::RecordingTaps;
                 self.spring.value = 0.5;
@@ -120,12 +113,13 @@ impl Model {
                     self.set_bpm(bpm);
                 }
             }
-            TapTempoState::TempoSet => self.set_initial_time(),
         }
     }
 
     pub fn clear(&mut self) {
-        self.state = TapTempoState::NoTempoSet;
+        self.taps.clear();
+        self.state = TapTempoState::Inactive;
+        self.bpm = None;
         println!("{:?}", self.state);
     }
 }
@@ -186,7 +180,7 @@ mod tests {
     #[test]
     fn starts_with_no_tempo() {
         let model = Model::default();
-        assert_eq!(model.state, TapTempoState::NoTempoSet);
+        assert_eq!(model.state, TapTempoState::Inactive);
     }
 
     #[test]
@@ -223,7 +217,7 @@ mod tests {
         model.update();
 
         let actual_bpm = model.bpm;
-        let diff = (expected_bpm - actual_bpm).abs();
+        let diff = (expected_bpm - actual_bpm.unwrap()).abs();
         assert!(diff < 1.0);
     }
 
@@ -232,6 +226,6 @@ mod tests {
         let mut model = Model::default();
         model.tap();
         model.clear();
-        assert_eq!(model.state, TapTempoState::NoTempoSet);
+        assert_eq!(model.state, TapTempoState::Inactive);
     }
 }
