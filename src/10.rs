@@ -31,6 +31,7 @@ pub struct Model {
     stick_y: f32,
 }
 
+
 fn model(app: &App) -> Model {
     let gilrs = Gilrs::new().unwrap();
 
