@@ -46,7 +46,7 @@ fn model(app: &App) -> Model {
         .unwrap();
 
     let noise_z_range = 0.4;
-    let agent_count = 8192;
+    let agent_count = 2048;
     let agents = (0..agent_count)
         .map(|_| Agent::new(app.window_rect(), noise_z_range))
         .collect();
