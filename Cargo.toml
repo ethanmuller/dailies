@@ -33,6 +33,10 @@ name = "controller_flow"
 path = "src/10.rs"
 
 [[bin]]
+name = "worms"
+path = "src/worms.rs"
+
+[[bin]]
 name = "noise"
 path = "src/noise.rs"
 
