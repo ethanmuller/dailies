@@ -33,7 +33,6 @@ fn model(app: &App) -> Model {
 
 struct Agent {
     location: Vec2,
-    vector_old: Vec2,
     step_size: f32,
 }
 
@@ -45,33 +44,30 @@ impl Agent {
         );
         Agent {
             location,
-            vector_old: location,
             step_size: 6.0,
         }
     }
 
-    fn update(&mut self, bounds: Rect) {
-        self.vector_old = self.location;
-
+    fn update(&mut self) {
         // move
         // self.location.x += self.angle.sin() * self.speed;
         // self.location.y += self.angle.cos() * self.speed;
 
         // if self.location.x < bounds.left() - self.step_size {
         //     self.location.x = bounds.right() + self.step_size;
-        //     self.vector_old.x = self.location.x;
+        //     self.location_old.x = self.location.x;
         // }
         // if self.location.x > bounds.right() + self.step_size {
         //     self.location.x = bounds.left() - self.step_size;
-        //     self.vector_old.x = self.location.x;
+        //     self.location_old.x = self.location.x;
         // }
         // if self.location.y < bounds.bottom() - self.step_size {
         //     self.location.y = bounds.top() + self.step_size;
-        //     self.vector_old.y = self.location.y;
+        //     self.location_old.y = self.location.y;
         // }
         // if self.location.y > bounds.top() + self.step_size {
         //     self.location.y = bounds.bottom() - self.step_size;
-        //     self.vector_old.y = self.location.y;
+        //     self.location_old.y = self.location.y;
         // }
     }
 
@@ -90,15 +86,15 @@ impl Agent {
 
 }
 
-fn update(app: &App, model: &mut Model, _frame_update: Update) {
+fn update(_app: &App, model: &mut Model, _frame_update: Update) {
     //let elapsed = model.start_time.elapsed();
     //let elapsed_secs = elapsed.as_secs_f32();
 
-    let bounds = app.window_rect();
+    //let bounds = app.window_rect();
 
     for agent in &mut model.agents {
         //agent.apply_noise(elapsed_secs, noise, z, model.noise_scale, model.noise_strength);
-        agent.update(bounds);
+        agent.update();
     }
 }
 
