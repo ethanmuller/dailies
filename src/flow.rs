@@ -2,8 +2,6 @@ use nannou::noise::{NoiseFn, Perlin, Seedable};
 use nannou::prelude::*;
 use gilrs::{Gilrs, Event, EventType, Button};
 
-mod tap;
-
 const DEADZONE: f32 = 0.125;
 
 fn main() {
@@ -16,14 +14,12 @@ pub struct Model {
     noise_strength: f64,
     noise_z_velocity: f64,
     agent_alpha: f32,
-    draw_mode: DrawMode,
     noise_seed: u32,
     start_time: std::time::Instant,
     oscillator: f32,
     oscillator_old: f32,
     oscillator_above_0: bool,
     oscillator_above_0_old: bool,
-    oscillator_amp: f32,
     frequency_multiplier: f32,
     gilrs: Gilrs,
     stick_y: f32,
@@ -37,14 +33,13 @@ fn model(app: &App) -> Model {
         .size(1920, 1080)
         .view(view)
         .title("🔴")
-        .mouse_pressed(mouse_pressed)
         .key_pressed(key_pressed)
         .key_released(key_released)
         .build()
         .unwrap();
 
     let noise_z_range = 0.4;
-    let agent_count = 300;
+    let agent_count = 30;
     let agents = (0..agent_count)
         .map(|_| Agent::new(app.window_rect(), noise_z_range))
         .collect();
@@ -53,16 +48,14 @@ fn model(app: &App) -> Model {
 
     Model {
         agents,
-        noise_scale: 60.0,
-        noise_strength: 1.0,
+        noise_scale: 300.0,
+        noise_strength: 0.0,
         noise_z_velocity: 0.01,
-        agent_alpha: 0.125,
-        draw_mode: DrawMode::Trails,
+        agent_alpha: 1.0,
         noise_seed: 12,
         oscillator,
         oscillator_old: oscillator,
         oscillator_above_0: true,
-        oscillator_amp: 2.3,
         oscillator_above_0_old: true,
         frequency_multiplier: 1.0,
         start_time: std::time::Instant::now(),
@@ -71,16 +64,11 @@ fn model(app: &App) -> Model {
     }
 }
 
-
-enum DrawMode {
-    NoTrails,
-    Trails,
-}
-
 struct Agent {
     vector: Vec2,
     vector_old: Vec2,
     step_size: f32,
+    speed: f32,
     angle: f32,
     noise_z: f64,
 }
@@ -94,33 +82,33 @@ impl Agent {
         Agent {
             vector,
             vector_old: vector,
-            step_size: random_range(0.3, 6.0),
-            angle: 0.0,
+            step_size: random_range(30.0, 60.0),
+            speed: random_range(6.0, 10.0),
+            angle: random_range(0.0, std::f32::consts::PI * 2.0),
             noise_z: random_range(0.0, noise_z),
         }
     }
 
     fn update(&mut self, oscillator: f32, noise_z_velocity: f64, bounds: Rect) {
-        self.noise_z += noise_z_velocity;
         self.vector_old = self.vector;
 
-        self.vector.x += self.angle.sin() * self.step_size * oscillator;
-        self.vector.y += self.angle.cos() * self.step_size * oscillator;
+        self.vector.x += self.angle.sin() * self.speed * oscillator;
+        self.vector.y += self.angle.cos() * self.speed * oscillator;
 
-        if self.vector.x < bounds.left() - 10.0 {
-            self.vector.x = bounds.right() + 10.0;
+        if self.vector.x < bounds.left() - self.step_size {
+            self.vector.x = bounds.right() + self.step_size;
             self.vector_old.x = self.vector.x;
         }
-        if self.vector.x > bounds.right() + 10.0 {
-            self.vector.x = bounds.left() - 10.0;
+        if self.vector.x > bounds.right() + self.step_size {
+            self.vector.x = bounds.left() - self.step_size;
             self.vector_old.x = self.vector.x;
         }
-        if self.vector.y < bounds.bottom() - 10.0 {
-            self.vector.y = bounds.top() + 10.0;
+        if self.vector.y < bounds.bottom() - self.step_size {
+            self.vector.y = bounds.top() + self.step_size;
             self.vector_old.y = self.vector.y;
         }
-        if self.vector.y > bounds.top() + 10.0 {
-            self.vector.y = bounds.bottom() - 10.0;
+        if self.vector.y > bounds.top() + self.step_size {
+            self.vector.y = bounds.bottom() - self.step_size;
             self.vector_old.y = self.vector.y;
         }
     }
@@ -150,6 +138,10 @@ impl Agent {
             .end(self.vector)
             .rgba(r, g, b, agent_alpha)
             .stroke_weight(self.step_size/2.0);
+        draw.ellipse()
+            .x_y(self.vector.x, self.vector.y)
+            .radius(self.step_size/2.0)
+            .rgba(r, g, b, agent_alpha);
     }
 
     fn draw(&self, model: &Model, draw: &Draw, agent_alpha: f32) {
@@ -165,11 +157,11 @@ impl Agent {
             .start(self.vector_old)
             .end(self.vector)
             .rgba(r, g, b, agent_alpha)
-            .stroke_weight(self.step_size/2.0);
+            .stroke_weight(self.step_size/15.0);
     }
 }
 
-fn update(app: &App, model: &mut Model, frame_update: Update) {
+fn update(app: &App, model: &mut Model, _frame_update: Update) {
     let noise = Perlin::new().set_seed(model.noise_seed);
     let elapsed = model.start_time.elapsed();
     let elapsed_secs = elapsed.as_secs_f32();
@@ -198,8 +190,6 @@ fn update(app: &App, model: &mut Model, frame_update: Update) {
 
             EventType::ButtonPressed(button, _) => {
                 match button {
-                    Button::South => { tap(model) },
-
                     Button::DPadUp => { model.frequency_multiplier = 4.0 },
                     Button::DPadRight => { model.frequency_multiplier = 2.0 },
                     Button::DPadDown => { model.frequency_multiplier = 1.0/4.0 },
@@ -215,7 +205,7 @@ fn update(app: &App, model: &mut Model, frame_update: Update) {
     }
 
     // model.oscillator = model.stick_y;
-     model.oscillator = model.oscillator + 0.2;
+     model.oscillator = model.oscillator + 0.1;
 
     model.oscillator_above_0 = model.oscillator > 0.0;
 
@@ -224,7 +214,7 @@ fn update(app: &App, model: &mut Model, frame_update: Update) {
     }
 
     for agent in &mut model.agents {
-        agent.apply_noise(elapsed_secs, noise, z, model.noise_scale, model.noise_strength);
+        //agent.apply_noise(elapsed_secs, noise, z, model.noise_scale, model.noise_strength);
         agent.update(model.oscillator, model.noise_z_velocity, bounds);
     }
 
@@ -264,20 +254,14 @@ fn view(app: &App, model: &Model, frame: Frame) {
         * 0.05;
     let b = (elapsed_secs * 0.05 * std::f32::consts::PI).sin().abs() * 0.3;
 
-    let alpha = match model.draw_mode {
-        DrawMode::NoTrails => 1.0,
-        DrawMode::Trails => model.oscillator.abs() * 0.3,
-    };
+    let alpha = 0.03;
 
     draw.rect()
         .wh(app.window_rect().wh())
         .rgba(r, g, b, alpha);
 
     model.agents.iter().for_each(|agent| {
-        match model.draw_mode {
-            DrawMode::NoTrails => agent.draw(model, &draw, model.agent_alpha),
-            DrawMode::Trails => agent.display_trails(model, &draw, model.agent_alpha),
-        }
+        agent.display_trails(model, &draw, model.agent_alpha)
     });
 
     // Write the result of our drawing to the window's frame.
@@ -296,28 +280,8 @@ fn key_released(app: &App, _model: &mut Model, key: Key) {
     }
 }
 
-fn tap(_model: &mut Model) {
-}
-
-pub fn mouse_pressed(_app: &App, model: &mut Model, mouse_button: MouseButton) {
-    match mouse_button {
-        MouseButton::Left => tap(model),
-        _ => {}
-    }
-}
-
-pub fn key_pressed(app: &App, model: &mut Model, key: Key) {
+pub fn key_pressed(app: &App, _model: &mut Model, key: Key) {
     match key {
-        // home row fingers
-        Key::F => model.draw_mode = DrawMode::Trails,
-        Key::D => model.draw_mode = DrawMode::NoTrails,
-
-        Key::J =>  model.frequency_multiplier = 1.0/4.0,
-        Key::K =>  model.frequency_multiplier = 1.0/2.0,
-        Key::L =>  model.frequency_multiplier = 2.0,
-        Key::Semicolon =>  model.frequency_multiplier = 4.0,
-
-        Key::Space => tap(model),
         Key::Escape =>  app.quit(),
         Key::Q => app.quit(),
         _ => {}
