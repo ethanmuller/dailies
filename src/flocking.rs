@@ -33,6 +33,7 @@ fn model(app: &App) -> Model {
 
 struct Agent {
     location: Vec2,
+    velocity: Vec2,
     step_size: f32,
 }
 
@@ -42,38 +43,38 @@ impl Agent {
             random_range(win_rect.left(), win_rect.right()),
             random_range(win_rect.top(), win_rect.bottom()),
         );
+        let velocity = vec2(random_range(-0.333, 0.333), random_range(-0.333, 0.333));
         Agent {
             location,
+            velocity,
             step_size: 6.0,
         }
     }
 
-    fn update(&mut self) {
-        // move
-        // self.location.x += self.angle.sin() * self.speed;
-        // self.location.y += self.angle.cos() * self.speed;
+    fn wrap_around_edges(&mut self, bounds: Rect) {
+        if self.location.x < bounds.left() - self.step_size {
+            self.location.x = bounds.right() + self.step_size;
+        }
+        if self.location.x > bounds.right() + self.step_size {
+            self.location.x = bounds.left() - self.step_size;
+        }
+        if self.location.y < bounds.bottom() - self.step_size {
+            self.location.y = bounds.top() + self.step_size;
+        }
+        if self.location.y > bounds.top() + self.step_size {
+            self.location.y = bounds.bottom() - self.step_size;
+        }
+    }
 
-        // if self.location.x < bounds.left() - self.step_size {
-        //     self.location.x = bounds.right() + self.step_size;
-        //     self.location_old.x = self.location.x;
-        // }
-        // if self.location.x > bounds.right() + self.step_size {
-        //     self.location.x = bounds.left() - self.step_size;
-        //     self.location_old.x = self.location.x;
-        // }
-        // if self.location.y < bounds.bottom() - self.step_size {
-        //     self.location.y = bounds.top() + self.step_size;
-        //     self.location_old.y = self.location.y;
-        // }
-        // if self.location.y > bounds.top() + self.step_size {
-        //     self.location.y = bounds.bottom() - self.step_size;
-        //     self.location_old.y = self.location.y;
-        // }
+    fn update(&mut self, bounds: Rect) {
+        // move
+        self.location.x += self.velocity.x;
+        self.location.y += self.velocity.y;
+
+        self.wrap_around_edges(bounds);
     }
 
     fn draw(&self, draw: &Draw, agent_alpha: f32) {
-        //let elapsed = model.start_time.elapsed();
-        //let elapsed_secs = elapsed.as_secs_f32();
         let r = 1.0;
         let g = 1.0;
         let b = 1.0;
@@ -86,15 +87,11 @@ impl Agent {
 
 }
 
-fn update(_app: &App, model: &mut Model, _frame_update: Update) {
-    //let elapsed = model.start_time.elapsed();
-    //let elapsed_secs = elapsed.as_secs_f32();
-
-    //let bounds = app.window_rect();
+fn update(app: &App, model: &mut Model, _frame_update: Update) {
+    let bounds = app.window_rect();
 
     for agent in &mut model.agents {
-        //agent.apply_noise(elapsed_secs, noise, z, model.noise_scale, model.noise_strength);
-        agent.update();
+        agent.update(bounds);
     }
 }
 
@@ -102,8 +99,6 @@ fn view(app: &App, model: &Model, frame: Frame) {
     // Begin drawing
     let draw = app.draw();
 
-    //let elapsed = model.start_time.elapsed();
-    //let elapsed_secs = elapsed.as_secs_f32();
     let r = 0.0;
     let g = 0.0;
     let b = 0.0;
