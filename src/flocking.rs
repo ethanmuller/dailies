@@ -1,77 +1,136 @@
 use nannou::prelude::*;
 
-fn main() {
-    nannou::app(model).update(update).run();
-}
-
 pub struct Model {
     agents: Vec<Agent>,
     agent_alpha: f32,
 }
 
-
-fn model(app: &App) -> Model {
-    app.new_window()
-        .size(1920, 1080)
-        .view(view)
-        .title("🔴")
-        .key_pressed(key_pressed)
-        .key_released(key_released)
-        .build()
-        .unwrap();
-
-    let agent_count = 30;
-    let agents = (0..agent_count)
-        .map(|_| Agent::new(app.window_rect()))
-        .collect();
-
-    Model {
-        agents,
-        agent_alpha: 1.0,
-    }
-}
-
+#[derive(Clone, PartialEq)]
 struct Agent {
-    location: Vec2,
+    position: Vec2,
     velocity: Vec2,
-    step_size: f32,
+    acceleration: Vec2,
+    perception: f32,
+    max_speed: f32,
+    max_steering: f32,
+    radius: f32,
 }
 
 impl Agent {
     fn new(win_rect: Rect) -> Self {
-        let location = vec2(
+        let position = vec2(
             random_range(win_rect.left(), win_rect.right()),
             random_range(win_rect.top(), win_rect.bottom()),
         );
-        let velocity = vec2(random_range(-0.333, 0.333), random_range(-0.333, 0.333));
+        let velocity = vec2(random_range(-1.0, 1.0), random_range(-1.0, 1.0));
+        let radius = 9.0;
         Agent {
-            location,
+            position,
+            acceleration: vec2(0.0, 0.0),
+            perception: radius * 6.666,
             velocity,
-            step_size: 6.0,
+            max_speed: 3.5,
+            radius,
+            max_steering: 0.01,
         }
+    }
+
+    fn update(&mut self, agents: &[Agent], bounds: Rect) {
+        // move
+        self.flock(agents);
+        self.velocity = limit_magnitude(self.velocity, self.max_speed);
+        self.position += self.velocity;
+        self.velocity += self.acceleration;
+        self.wrap_around_edges(bounds);
+        self.acceleration *= 0.0;
+    }
+
+    fn flock(&mut self, agents: &[Agent]) {
+        let alignment = self.align_velocities(agents) * 1.0;
+        let cohesion = self.cohesion(agents) * 1.0;
+        let separation = self.separation(agents) * 3.0;
+
+        self.acceleration += alignment;
+        self.acceleration += cohesion;
+        self.acceleration += separation;
+    }
+
+    fn align_velocities(&mut self, agents: &[Agent]) -> nannou::geom::Vec2 {
+        let mut total = 0;
+        let mut steering = vec2(0.0, 0.0);
+        for other in agents {
+            let d = self.position.distance(other.position);
+            if other != self && d < self.perception {
+                steering += other.velocity;
+                total += 1;
+            }
+        }
+        if total > 0 {
+            steering = steering / total as f32;
+            steering = set_magnitude(steering, self.max_speed);
+            steering = steering - self.velocity;
+            steering = limit_magnitude(steering, self.max_steering);
+        }
+
+        return steering
+    }
+
+    fn cohesion(&mut self, agents: &[Agent]) -> nannou::geom::Vec2 {
+        let mut total = 0;
+        let mut steering = vec2(0.0, 0.0);
+        for other in agents {
+            let d = self.position.distance(other.position);
+            if other != self && d < self.perception {
+                steering += other.position;
+                total += 1;
+            }
+        }
+        if total > 0 {
+            steering = steering / total as f32;
+            steering = steering - self.position;
+            steering = set_magnitude(steering, self.max_speed);
+            steering = steering - self.velocity;
+            steering = limit_magnitude(steering, self.max_steering);
+        }
+
+        return steering
+    }
+
+    fn separation(&mut self, agents: &[Agent]) -> nannou::geom::Vec2 {
+        let mut total = 0;
+        let mut steering = vec2(0.0, 0.0);
+        for other in agents {
+            let d = self.position.distance(other.position);
+            if other != self && d < self.perception {
+                let mut diff = self.position - other.position;
+                diff = diff / d;
+                steering += diff;
+                total += 1;
+            }
+        }
+        if total > 0 {
+            steering = steering / total as f32;
+            steering = set_magnitude(steering, self.max_speed);
+            steering = steering - self.velocity;
+            steering = limit_magnitude(steering, self.max_steering);
+        }
+
+        return steering
     }
 
     fn wrap_around_edges(&mut self, bounds: Rect) {
-        if self.location.x < bounds.left() - self.step_size {
-            self.location.x = bounds.right() + self.step_size;
+        if self.position.x < bounds.left() - self.velocity.x - self.radius*2.0 {
+            self.position.x = bounds.right() + self.velocity.x + self.radius*2.0;
         }
-        if self.location.x > bounds.right() + self.step_size {
-            self.location.x = bounds.left() - self.step_size;
+        if self.position.x > bounds.right() + self.velocity.x + self.radius*2.0 {
+            self.position.x = bounds.left() - self.velocity.x - self.radius*2.0;
         }
-        if self.location.y < bounds.bottom() - self.step_size {
-            self.location.y = bounds.top() + self.step_size;
+        if self.position.y < bounds.bottom() - self.velocity.y - self.radius*2.0 {
+            self.position.y = bounds.top() + self.velocity.y + self.radius*2.0;
         }
-        if self.location.y > bounds.top() + self.step_size {
-            self.location.y = bounds.bottom() - self.step_size;
+        if self.position.y > bounds.top() + self.velocity.y + self.radius*2.0 {
+            self.position.y = bounds.bottom() - self.velocity.y - self.radius*2.0;
         }
-    }
-
-    fn update(&mut self, bounds: Rect) {
-        // move
-        self.location.x += self.velocity.x;
-        self.location.y += self.velocity.y;
-
-        self.wrap_around_edges(bounds);
     }
 
     fn draw(&self, draw: &Draw, agent_alpha: f32) {
@@ -80,8 +139,8 @@ impl Agent {
         let b = 1.0;
 
         draw.ellipse()
-            .x_y(self.location.x, self.location.y)
-            .radius(self.step_size/2.0)
+            .x_y(self.position.x, self.position.y)
+            .radius(self.radius)
             .rgba(r, g, b, agent_alpha);
     }
 
@@ -89,9 +148,10 @@ impl Agent {
 
 fn update(app: &App, model: &mut Model, _frame_update: Update) {
     let bounds = app.window_rect();
+    let agents_snapshot = model.agents.clone();
 
     for agent in &mut model.agents {
-        agent.update(bounds);
+        agent.update(&agents_snapshot, bounds);
     }
 }
 
@@ -103,7 +163,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
     let g = 0.0;
     let b = 0.0;
 
-    let alpha = 1.0;
+    let alpha = 0.02;
 
     draw.rect()
         .wh(app.window_rect().wh())
@@ -135,4 +195,43 @@ pub fn key_pressed(app: &App, _model: &mut Model, key: Key) {
         Key::Q => app.quit(),
         _ => {}
     }
+}
+
+fn model(app: &App) -> Model {
+    app.new_window()
+        .size(1920, 1080)
+        .view(view)
+        .title("🔴")
+        .key_pressed(key_pressed)
+        .key_released(key_released)
+        .build()
+        .unwrap();
+
+    let agent_count = 666;
+    let agents = (0..agent_count)
+        .map(|_| Agent::new(app.window_rect()))
+        .collect();
+
+    Model {
+        agents,
+        agent_alpha: 1.0,
+    }
+}
+
+fn main() {
+    nannou::app(model).update(update).run();
+}
+
+
+fn limit_magnitude(v: Vec2, max_magnitude: f32) -> Vec2 {
+    let current_magnitude = v.length();
+    if current_magnitude > max_magnitude {
+        v.normalize() * max_magnitude
+    } else {
+        v
+    }
+}
+
+fn set_magnitude(v: Vec2, magnitude: f32) -> Vec2 {
+    v.normalize() * magnitude
 }
