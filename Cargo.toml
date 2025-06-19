@@ -16,3 +16,7 @@ members = [
 name = "flocking"
 path = "src/flocking.rs"
 
+[[bin]]
+name = "controller_test"
+path = "src/controller_test.rs"
+

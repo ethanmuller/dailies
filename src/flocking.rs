@@ -29,7 +29,7 @@ impl Agent {
             acceleration: vec2(0.0, 0.0),
             perception: radius * 6.666,
             velocity,
-            max_speed: 3.5,
+            max_speed: 0.2,
             radius,
             max_steering: 0.01,
         }
@@ -48,7 +48,7 @@ impl Agent {
     fn flock(&mut self, agents: &[Agent]) {
         let alignment = self.align_velocities(agents) * 1.0;
         let cohesion = self.cohesion(agents) * 1.0;
-        let separation = self.separation(agents) * 3.0;
+        let separation = self.separation(agents) * 1.0;
 
         self.acceleration += alignment;
         self.acceleration += cohesion;
@@ -163,7 +163,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
     let g = 0.0;
     let b = 0.0;
 
-    let alpha = 0.02;
+    let alpha = 0.001;
 
     draw.rect()
         .wh(app.window_rect().wh())

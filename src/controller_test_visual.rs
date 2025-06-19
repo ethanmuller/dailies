@@ -6,11 +6,10 @@ fn main() {
 }
 
 pub struct Data {
-    r: f32,
-    g: f32,
-    b: f32,
-    x: f32,
-    y: f32,
+    rx: f32,
+    lx: f32,
+    ry: f32,
+    ly: f32,
     gilrs: Gilrs,
 }
 
@@ -25,17 +24,16 @@ fn data(app: &App) -> Data {
 
 
     Data {
-        r: 0.0,
-        g: 0.0,
-        b: 0.0,
-        x: 0.0,
-        y: 0.0,
+        rx: 0.0,
+        lx: 0.0,
+        ry: 0.0,
+        ly: 0.0,
         gilrs,
     }
 }
 
 
-fn update(app: &App, data: &mut Data, frame_update: Update) {
+fn update(app: &App, data: &mut Data, _frame_update: Update) {
     while let Some(Event { id: _, event, time: _ }) = data.gilrs.next_event() {
         match event {
             EventType::ButtonPressed(button, _) => {
@@ -44,35 +42,45 @@ fn update(app: &App, data: &mut Data, frame_update: Update) {
             EventType::ButtonReleased(button, _) => {
                 println!("Button released: {:?}", button);
             }
+            EventType::ButtonChanged(button, value, _) => {
+                println!("button changed: {:?}: {}", button, value);
+            }
             EventType::AxisChanged(axis, value, _) => {
                 match axis {
+                    gilrs::Axis::LeftStickX => {
+                        data.lx = app.window_rect().right() * value;
+                    },
+                    gilrs::Axis::LeftStickY => {
+                        data.ly = app.window_rect().top() * value;
+                    },
                     gilrs::Axis::RightStickX => {
-                        data.x = app.window_rect().right() * value * 0.666;
+                        data.rx = app.window_rect().right() * value;
                     },
                     gilrs::Axis::RightStickY => {
-                        data.y = app.window_rect().top() * value * 0.666;
+                        data.ry = app.window_rect().top() * value;
                     },
                     _ => {},
                 }
-                println!("Axis changed: {:?}", value);
+                println!("Axis changed: {}", value);
             }
             _ => {}
         }
     }
-
-    let t = frame_update.since_start.as_secs_f32();
-    let s = 0.333;
-    data.r = ((t * PI * 3.0 * s).sin() + 1.0)/2.0;
-    data.g = ((t * PI * 6.0 * s).sin() + 1.0)/2.0;
-    data.b = ((t * PI * 1.0 * s).sin() + 1.0)/2.0;
 }
 
 fn draw(app: &App, data: &Data, frame: Frame) {
     let draw = app.draw();
     draw.background().rgb(0.0, 0.0, 0.0);
     draw.ellipse()
-        .x_y(data.x, data.y)
-        .rgb(data.r, data.g, data.b);
+        .x_y(data.lx, data.ly)
+        .no_fill()
+        .radius(66.666)
+        .stroke(rgb(1.,1.,1.))
+        .stroke_weight(3.0);
+    draw.ellipse()
+        .x_y(data.rx, data.ry)
+        .radius(60.)
+        .rgb(1.,1.,1.);
     draw.to_frame(app, &frame).unwrap();
 }
 
