@@ -23,15 +23,15 @@ impl Agent {
             random_range(win_rect.top(), win_rect.bottom()),
         );
         let velocity = vec2(random_range(-1.0, 1.0), random_range(-1.0, 1.0));
-        let radius = 9.0;
+        let radius = 3.0;
         Agent {
             position,
             acceleration: vec2(0.0, 0.0),
             perception: radius * 6.666,
             velocity,
-            max_speed: 0.2,
             radius,
-            max_steering: 0.01,
+            max_speed: radius / 2.,
+            max_steering: 0.07,
         }
     }
 
@@ -163,7 +163,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
     let g = 0.0;
     let b = 0.0;
 
-    let alpha = 0.001;
+    let alpha = 0.01;
 
     draw.rect()
         .wh(app.window_rect().wh())
