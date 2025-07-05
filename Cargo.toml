@@ -2,7 +2,7 @@
 name = "dailies"
 version = "0.1.0"
 edition = "2021"
-default-run = "flocking"
+default-run = "main"
 
 [dependencies]
 nannou = "0.19.0"
@@ -12,6 +12,10 @@ gilrs = "0.8"
 [workspace]
 members = [
 ]
+
+[[bin]]
+name = "main"
+path = "src/main.rs"
 
 [[bin]]
 name = "flocking"
