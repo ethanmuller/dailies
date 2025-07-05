@@ -13,7 +13,7 @@ fn main() {
         .expect("Could not connect to socket at address");
 
     loop {
-        while let Some(Event { id: _, event, time: _ }) = gilrs.next_event() {
+        while let Some(Event { id: _, event, time: _, ..}) = gilrs.next_event() {
             match event {
                 EventType::ButtonPressed(button, _code) => {
                     // println!("button changed: {:?}", button);
